@@ -1,0 +1,4 @@
+namespace CloudGames.Payments.Application.DTOs;
+
+public record InitiatePaymentRequestDto(Guid GameId, decimal Amount);
+public record PaymentResponseDto(Guid PaymentId, string Status);
