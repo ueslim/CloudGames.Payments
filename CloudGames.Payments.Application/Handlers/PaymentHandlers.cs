@@ -25,9 +25,9 @@ public class InitiatePaymentHandler : IRequestHandler<InitiatePaymentCommand, Pa
 
     public async Task<PaymentResponseDto> Handle(InitiatePaymentCommand request, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating payment. UserId={UserId}, GameId={GameId}, Amount={Amount}", request.UserId, request.Request.GameId, request.Request.Amount);
+        _logger.LogInformation("Criando pagamento. UserId={UserId}, GameId={GameId}, Amount={Amount}", request.UserId, request.Request.GameId, request.Request.Amount);
         var payment = Payment.Create(request.UserId, request.Request.GameId, request.Request.Amount);
-        // Do not auto-approve; stay Pending until confirmation processor updates it
+        // Não aprova automaticamente; permanece Pending até o processador de confirmação atualizar
         await _repository.AddAsync(payment, cancellationToken);
 
         foreach (var evt in payment.DomainEvents)
@@ -45,7 +45,7 @@ public class InitiatePaymentHandler : IRequestHandler<InitiatePaymentCommand, Pa
         payment.ClearDomainEvents();
 
         await _repository.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation("Payment persisted. Id={PaymentId}, Status={Status}", payment.Id, payment.Status);
+        _logger.LogInformation("Pagamento persistido. Id={PaymentId}, Status={Status}", payment.Id, payment.Status);
         return new PaymentResponseDto(payment.Id, payment.Status.ToString());
     }
 }
@@ -62,7 +62,7 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
     public async Task<PaymentResponseDto> Handle(GetPaymentStatusQuery request, CancellationToken cancellationToken)
     {
         var p = await _repository.GetByIdAsync(request.PaymentId, cancellationToken)
-                ?? throw new KeyNotFoundException("Payment not found");
+                ?? throw new KeyNotFoundException("Pagamento não encontrado");
         return new PaymentResponseDto(p.Id, p.Status.ToString());
     }
 }

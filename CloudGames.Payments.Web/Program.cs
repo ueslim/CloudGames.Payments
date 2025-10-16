@@ -12,17 +12,20 @@ builder.Services.AddCors(o => o.AddPolicy("frontend", p => p
     .WithOrigins("http://localhost:4200", "https://*.azurestaticapps.net")
     .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
-// Authentication is handled by API Management (APIM) in production
-// No authentication middleware is required in the microservice
-Log.Information("Authentication: Disabled - APIM handles authentication and authorization");
-Log.Information("Security: All endpoints are accessible without JWT validation in this microservice");
+// Autenticação é gerenciada pelo API Management (APIM) em produção
+// Nenhum middleware de autenticação é necessário no microserviço
+Log.Information("Autenticação: Desabilitada - APIM gerencia autenticação e autorização");
+Log.Information("Segurança: Todos os endpoints são acessíveis sem validação JWT neste microserviço");
 
 builder.Services.AddApi();
 builder.Services.AddSwaggerDocumentation();
-// REMOVED: builder.Services.AddJwtAuthentication(config); - APIM handles authentication
+// REMOVIDO: builder.Services.AddJwtAuthentication(config); - APIM gerencia autenticação
 builder.Services.AddObservability(config);
 builder.Services.AddPaymentsPersistence(config);
 builder.Services.AddPaymentsMessaging(config);
+
+// Registra serviço de confirmação de pagamento em background
+builder.Services.AddHostedService<CloudGames.Payments.Web.Services.PaymentConfirmationService>();
 
 var app = builder.Build();
 
@@ -37,13 +40,13 @@ if (app.Environment.IsDevelopment())
 app.UseSerilogRequestLogging();
 app.UseMiddleware<CorrelationMiddleware>();
 app.UseCors("frontend");
-// REMOVED: app.UseAuthentication(); - APIM handles authentication
-// REMOVED: app.UseAuthorization(); - APIM handles authorization
+// REMOVIDO: app.UseAuthentication(); - APIM gerencia autenticação
+// REMOVIDO: app.UseAuthorization(); - APIM gerencia autorização
 
 app.MapGet("/health", () => Results.Ok("ok"));
 app.MapGet("/", (HttpContext ctx) => Results.Redirect("/swagger"));
 
-// Use MVC controllers (avoid duplicate minimal endpoints)
+// Usa controllers MVC (evita endpoints mínimos duplicados)
 app.MapControllers();
 
 try
@@ -52,7 +55,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "Host terminated unexpectedly");
+    Log.Fatal(ex, "Host encerrado inesperadamente");
 }
 finally
 {

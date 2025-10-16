@@ -34,22 +34,22 @@ public class PaymentsController : ControllerBase
         [FromBody] InitiatePaymentRequestDto dto,
         [FromHeader] string? userId)
     {
-        // In production, APIM validates the user and passes user info via headers
-        // In development, userId can be passed via header for testing
+        // Em produção, APIM valida o usuário e passa informações via headers
+        // Em desenvolvimento, userId pode ser passado via header para testes
         Guid userGuid;
         if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out userGuid))
         {
-            // For development/testing without APIM, use a default user ID
+            // Para desenvolvimento/testes sem APIM, usa um ID de usuário padrão
             userGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            _logger.LogWarning("No userId provided, using default for development: {UserId}", userGuid);
+            _logger.LogWarning("Nenhum userId fornecido, usando padrão para desenvolvimento: {UserId}", userGuid);
         }
 
-        _logger.LogInformation("Initiating payment. UserId={UserId}, GameId={GameId}, Amount={Amount}", 
+        _logger.LogInformation("Iniciando pagamento. UserId={UserId}, GameId={GameId}, Amount={Amount}", 
             userGuid, dto.GameId, dto.Amount);
         
         var resp = await _mediator.Send(new InitiatePaymentCommand(userGuid, dto));
         
-        _logger.LogInformation("Payment created with id {PaymentId} and status {Status}.", 
+        _logger.LogInformation("Pagamento criado com id {PaymentId} e status {Status}.", 
             resp.PaymentId, resp.Status);
         
         return Accepted($"/api/payments/{resp.PaymentId}/status", new { paymentId = resp.PaymentId });
@@ -63,17 +63,17 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Status(Guid id)
     {
-        _logger.LogInformation("Getting payment status for {PaymentId}.", id);
+        _logger.LogInformation("Obtendo status do pagamento {PaymentId}.", id);
         
         try
         {
             var resp = await _mediator.Send(new GetPaymentStatusQuery(id));
-            _logger.LogInformation("Payment {PaymentId} status is {Status}.", id, resp.Status);
+            _logger.LogInformation("Status do pagamento {PaymentId} é {Status}.", id, resp.Status);
             return Ok(new { status = resp.Status });
         }
         catch (KeyNotFoundException)
         {
-            _logger.LogWarning("Payment {PaymentId} not found.", id);
+            _logger.LogWarning("Pagamento {PaymentId} não encontrado.", id);
             return NotFound(new { mensagem = "Pagamento não encontrado" });
         }
     }

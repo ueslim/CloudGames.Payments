@@ -24,6 +24,19 @@ public class PaymentRepository : IPaymentRepository
         return _db.Payments.FirstOrDefaultAsync(x => x.Id == id, ct);
     }
 
+    public async Task<IEnumerable<Payment>> GetPendingPaymentsAsync(CancellationToken ct = default)
+    {
+        return await _db.Payments
+            .Where(p => p.Status == PaymentStatus.Pending)
+            .ToListAsync(ct);
+    }
+
+    public Task UpdateAsync(Payment payment, CancellationToken ct = default)
+    {
+        _db.Payments.Update(payment);
+        return Task.CompletedTask;
+    }
+
     public async Task SaveChangesAsync(CancellationToken ct = default)
     {
         await _db.SaveChangesAsync(ct);
