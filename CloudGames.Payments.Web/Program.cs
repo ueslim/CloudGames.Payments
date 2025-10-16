@@ -26,7 +26,7 @@ builder.Services.AddPaymentsMessaging(config);
 
 var app = builder.Build();
 
-await app.InitializeDatabasesAsync();
+await CloudGames.Payments.Infra.Data.DatabaseInitializer.EnsureDatabaseMigratedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {
