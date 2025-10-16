@@ -1,4 +1,5 @@
 namespace CloudGames.Payments.Application.DTOs;
 
-public record InitiatePaymentRequestDto(Guid GameId, Guid? UserId, decimal Amount);
+// UserId removed from request - comes from APIM via header
+public record InitiatePaymentRequestDto(Guid GameId, decimal Amount);
 public record PaymentResponseDto(Guid PaymentId, string Status);

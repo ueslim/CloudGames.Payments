@@ -12,9 +12,14 @@ builder.Services.AddCors(o => o.AddPolicy("frontend", p => p
     .WithOrigins("http://localhost:4200", "https://*.azurestaticapps.net")
     .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
+// Authentication is handled by API Management (APIM) in production
+// No authentication middleware is required in the microservice
+Log.Information("Authentication: Disabled - APIM handles authentication and authorization");
+Log.Information("Security: All endpoints are accessible without JWT validation in this microservice");
+
 builder.Services.AddApi();
 builder.Services.AddSwaggerDocumentation();
-builder.Services.AddJwtAuthentication(config);
+// REMOVED: builder.Services.AddJwtAuthentication(config); - APIM handles authentication
 builder.Services.AddObservability(config);
 builder.Services.AddPaymentsPersistence(config);
 builder.Services.AddPaymentsMessaging(config);
@@ -32,8 +37,8 @@ if (app.Environment.IsDevelopment())
 app.UseSerilogRequestLogging();
 app.UseMiddleware<CorrelationMiddleware>();
 app.UseCors("frontend");
-app.UseAuthentication();
-app.UseAuthorization();
+// REMOVED: app.UseAuthentication(); - APIM handles authentication
+// REMOVED: app.UseAuthorization(); - APIM handles authorization
 
 app.MapGet("/health", () => Results.Ok("ok"));
 app.MapGet("/", (HttpContext ctx) => Results.Redirect("/swagger"));

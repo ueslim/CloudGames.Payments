@@ -9,26 +9,23 @@ public static class SwaggerConfig
     {
         services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo { Title = "CloudGames Payments API", Version = "v1" });
-            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-            {
-                Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
-                Name = "Authorization",
-                In = ParameterLocation.Header,
-                Type = SecuritySchemeType.Http,
-                Scheme = "Bearer",
-                BearerFormat = "JWT"
+            c.SwaggerDoc("v1", new OpenApiInfo 
+            { 
+                Title = "CloudGames - API de Pagamentos",
+                Version = "v1",
+                Description = "Microserviço de pagamentos. Autenticação é gerenciada pelo API Management (APIM)."
             });
-            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            
+            // Authentication is handled by APIM - no JWT security scheme needed
+            // In production, APIM validates tokens and forwards userId via headers
+            
+            // Incluir comentários XML
+            var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            if (File.Exists(xmlPath))
             {
-                {
-                    new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-                    },
-                    Array.Empty<string>()
-                }
-            });
+                c.IncludeXmlComments(xmlPath);
+            }
         });
         return services;
     }
