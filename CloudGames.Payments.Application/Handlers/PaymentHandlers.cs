@@ -6,6 +6,7 @@ using CloudGames.Payments.Domain.Entities;
 using CloudGames.Payments.Domain.Events;
 using CloudGames.Payments.Domain.Repositories;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace CloudGames.Payments.Application.Handlers;
 
@@ -13,19 +14,20 @@ public class InitiatePaymentHandler : IRequestHandler<InitiatePaymentCommand, Pa
 {
     private readonly IPaymentRepository _repository;
     private readonly IEventStore _eventStore;
+    private readonly ILogger<InitiatePaymentHandler> _logger;
 
-    public InitiatePaymentHandler(IPaymentRepository repository, IEventStore eventStore)
+    public InitiatePaymentHandler(IPaymentRepository repository, IEventStore eventStore, ILogger<InitiatePaymentHandler> logger)
     {
         _repository = repository;
         _eventStore = eventStore;
+        _logger = logger;
     }
 
     public async Task<PaymentResponseDto> Handle(InitiatePaymentCommand request, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Creating payment. UserId={UserId}, GameId={GameId}, Amount={Amount}", request.UserId, request.Request.GameId, request.Request.Amount);
         var payment = Payment.Create(request.UserId, request.Request.GameId, request.Request.Amount);
-        // For now, approve immediately to simulate gateway confirmation
-        payment.Approve();
-
+        // Do not auto-approve; stay Pending until confirmation processor updates it
         await _repository.AddAsync(payment, cancellationToken);
 
         foreach (var evt in payment.DomainEvents)
@@ -43,7 +45,7 @@ public class InitiatePaymentHandler : IRequestHandler<InitiatePaymentCommand, Pa
         payment.ClearDomainEvents();
 
         await _repository.SaveChangesAsync(cancellationToken);
-
+        _logger.LogInformation("Payment persisted. Id={PaymentId}, Status={Status}", payment.Id, payment.Status);
         return new PaymentResponseDto(payment.Id, payment.Status.ToString());
     }
 }

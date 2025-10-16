@@ -1,6 +1,6 @@
 namespace CloudGames.Payments.Domain.Entities;
 
-public enum PaymentStatus { Pending, Succeeded, Failed }
+public enum PaymentStatus { Pending, Approved, Declined }
 
 public class Payment
 {
@@ -29,14 +29,14 @@ public class Payment
     public void Approve()
     {
         if (Status != PaymentStatus.Pending) return;
-        Status = PaymentStatus.Succeeded;
+        Status = PaymentStatus.Approved;
         _domainEvents.Add(new Events.PaymentApproved(Id, UserId, GameId, Amount));
     }
 
     public void Decline(string reason)
     {
         if (Status != PaymentStatus.Pending) return;
-        Status = PaymentStatus.Failed;
+        Status = PaymentStatus.Declined;
         _domainEvents.Add(new Events.PaymentDeclined(Id, UserId, GameId, Amount, reason));
     }
 
