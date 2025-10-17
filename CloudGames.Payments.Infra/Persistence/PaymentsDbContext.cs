@@ -31,8 +31,8 @@ public class PaymentsDbContext : DbContext
             b.HasKey(x => x.Id);
             b.Property(x => x.Type).IsRequired().HasMaxLength(200);
             b.Property(x => x.Payload).IsRequired();
-            b.Property(x => x.OccurredOn).HasColumnName("OccurredAt").IsRequired();
-            b.Property(x => x.ProcessedOn).HasColumnName("ProcessedAt");
+            b.Property(x => x.OccurredAt).IsRequired();
+            b.Property(x => x.ProcessedAt);
         });
     }
 }

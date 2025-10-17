@@ -22,7 +22,7 @@ public class EventStoreRepository : IEventStore
         await _paymentsDb.OutboxMessages.AddAsync(new OutboxMessage
         {
             Id = Guid.NewGuid(),
-            OccurredOn = storedEvent.OccurredOn,
+            OccurredAt = storedEvent.OccurredOn,
             Type = storedEvent.Type,
             Payload = storedEvent.Data
         }, ct);

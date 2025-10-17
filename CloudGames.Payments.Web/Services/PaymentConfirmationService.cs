@@ -1,4 +1,6 @@
 using CloudGames.Payments.Domain.Repositories;
+using CloudGames.Payments.Domain.Events;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -34,6 +36,8 @@ public class PaymentConfirmationService : BackgroundService
                 using var scope = _serviceProvider.CreateScope();
                 var repository = scope.ServiceProvider
                     .GetRequiredService<IPaymentRepository>();
+                var eventStore = scope.ServiceProvider
+                    .GetRequiredService<IEventStore>();
 
                 var pendingPayments = await repository
                     .GetPendingPaymentsAsync(stoppingToken);
@@ -63,6 +67,21 @@ public class PaymentConfirmationService : BackgroundService
                             "Pagamento {PaymentId} RECUSADO - Usuario: {UserId}, Motivo: Saldo insuficiente",
                             payment.Id, payment.UserId);
                     }
+
+                    // Salva os domain events no EventStore e Outbox (para serem publicados)
+                    foreach (var evt in payment.DomainEvents)
+                    {
+                        var type = evt.GetType().Name;
+                        var data = JsonSerializer.Serialize(evt);
+                        await eventStore.AppendAsync(new StoredEvent
+                        {
+                            AggregateId = payment.Id,
+                            Type = type,
+                            Data = data,
+                            OccurredOn = DateTime.UtcNow
+                        }, stoppingToken);
+                    }
+                    payment.ClearDomainEvents();
 
                     await repository.UpdateAsync(payment, stoppingToken);
                 }

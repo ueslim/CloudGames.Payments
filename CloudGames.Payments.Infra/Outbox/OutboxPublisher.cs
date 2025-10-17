@@ -1,10 +1,7 @@
-using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
-using Azure.Messaging.ServiceBus;
+using Azure.Storage.Queues;
 using CloudGames.Payments.Infra.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -15,13 +12,13 @@ public class OutboxPublisher : BackgroundService
 {
     private readonly IServiceProvider _services;
     private readonly ILogger<OutboxPublisher> _logger;
-    private readonly ServiceBusClient _busClient;
+    private readonly QueueClient _queueClient;
 
-    public OutboxPublisher(IServiceProvider services, ILogger<OutboxPublisher> logger, ServiceBusClient busClient)
+    public OutboxPublisher(IServiceProvider services, ILogger<OutboxPublisher> logger, QueueClient queueClient)
     {
         _services = services;
         _logger = logger;
-        _busClient = busClient;
+        _queueClient = queueClient;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -33,8 +30,8 @@ public class OutboxPublisher : BackgroundService
                 using var scope = _services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<PaymentsDbContext>();
                 var pending = await db.OutboxMessages
-                    .Where(x => x.ProcessedOn == null)
-                    .OrderBy(x => x.OccurredOn)
+                    .Where(x => x.ProcessedAt == null)
+                    .OrderBy(x => x.OccurredAt)
                     .Take(20)
                     .ToListAsync(stoppingToken);
 
@@ -44,33 +41,20 @@ public class OutboxPublisher : BackgroundService
                     continue;
                 }
 
-                var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-                var topic = configuration["ServiceBus:Topic"] ?? "payments-events";
-                await using var sender = _busClient.CreateSender(topic);
+                // Cria a fila se não existir
+                await _queueClient.CreateIfNotExistsAsync(cancellationToken: stoppingToken);
 
                 foreach (var msg in pending)
                 {
                     try
                     {
-                        var sbMessage = new ServiceBusMessage(Encoding.UTF8.GetBytes(msg.Payload))
-                        {
-                            Subject = msg.Type,
-                            ContentType = "application/json"
-                        };
-                        var activity = Activity.Current;
-                        if (activity != null)
-                        {
-                            sbMessage.ApplicationProperties["traceparent"] = activity.Id;
-                            if (activity.TraceStateString != null)
-                                sbMessage.ApplicationProperties["tracestate"] = activity.TraceStateString;
-                        }
-                        await sender.SendMessageAsync(sbMessage, stoppingToken);
-                        msg.ProcessedOn = DateTime.UtcNow;
+                        await _queueClient.SendMessageAsync(msg.Payload, stoppingToken);
+                        msg.ProcessedAt = DateTime.UtcNow;
                     }
                     catch (Exception ex)
                     {
                         msg.AttemptCount += 1;
-                        _logger.LogError(ex, "Failed to publish outbox message {Id}", msg.Id);
+                        _logger.LogError(ex, "Falha ao publicar mensagem outbox {Id}", msg.Id);
                     }
                 }
 

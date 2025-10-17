@@ -1,8 +1,7 @@
-using Azure.Messaging.ServiceBus;
+using Azure.Storage.Queues;
 using CloudGames.Payments.Infra.Outbox;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
 
 namespace CloudGames.Payments.Web.Configurations;
 
@@ -10,26 +9,18 @@ public static class MessagingConfig
 {
 	public static IServiceCollection AddPaymentsMessaging(this IServiceCollection services, IConfiguration configuration)
 	{
-		var sbConn = configuration.GetConnectionString("ServiceBus");
-		if (!string.IsNullOrWhiteSpace(sbConn))
+		// Usa Azure Storage Queue (mesmo padrão do Users service)
+		var storageConn = configuration.GetConnectionString("Storage") ?? "UseDevelopmentStorage=true";
+		var queueName = configuration["Queues:Payments"] ?? "payments-events";
+		
+		services.AddSingleton(sp => new QueueClient(storageConn, queueName, new QueueClientOptions
 		{
-			var sbClient = new ServiceBusClient(sbConn, new ServiceBusClientOptions
-			{
-				RetryOptions = new ServiceBusRetryOptions
-				{
-					Mode = ServiceBusRetryMode.Exponential,
-					MaxRetries = 5,
-					Delay = TimeSpan.FromSeconds(1),
-					MaxDelay = TimeSpan.FromSeconds(30)
-				}
-			});
-			services.AddSingleton(sbClient);
-			services.AddHostedService<OutboxPublisher>();
-		}
-		else
-		{
-			Log.Warning("ServiceBus connection string is not configured. Outbox publisher is disabled.");
-		}
+			MessageEncoding = QueueMessageEncoding.Base64
+		}));
+		
+		// Registra o OutboxPublisher para publicar eventos automaticamente
+		services.AddHostedService<OutboxPublisher>();
+		
 		return services;
 	}
 }
